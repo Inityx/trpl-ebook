@@ -1,112 +1,156 @@
-use std::path::Path;
-use std::error::Error;
-use regex::Regex;
+use std::{
+    path::Path,
+    fs::File,
+    io::Read,
+};
 
-use helpers::*;
+use failure::{
+    Error,
+    ResultExt
+};
 
-/// Poor man's progress indicator
-macro_rules! put {
-    ($e:expr) => ({
-        {
-            use std::io;
-            use std::io::Write;
-            print!($e);
-            io::stdout().flush().unwrap();
-        }
-    })
+use text::{
+    AdjustExt,
+    normalize::NormalizeExt,
+    references::MdRefsExt
+};
+
+fn file_to_string<P: AsRef<Path>>(path: P) -> Result<String, Error> {
+    let mut buffer = String::new();
+    let mut file = File::open(&path).context(
+        format!(
+            "Failed opening {}",
+            path.as_ref().to_string_lossy()
+        )
+    )?;
+    file.read_to_string(&mut buffer).context(
+        format!(
+            "Failed reading {}",
+            path.as_ref().to_string_lossy()
+        )
+    )?;
+    Ok(buffer)
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+const TOC_PATTERN: &str = 
+    r"(?x)
+    (?P<indent>\s*?)
+    \*\s
+    \[
+    (?P<title>.+?)
+    \]
+    \(
+    (?P<filename>.+?)
+    \)
+";
+const FILENAME_PATTERN: &str =
+    r"(?x)
+    ^
+    (?P<path>(.*)/)?
+    (?P<name>(.*?))
+    (?P<ext>\.(\w*))?
+    $
+";
+
 struct Chapter {
     file: String,
     headline: String,
 }
 
-fn get_chapters(toc: &str) -> Vec<Chapter> {
-    let toc_pattern = Regex::new(r"(?x)
-        (?P<indent>\s*?)
-        \*\s
-        \[
-        (?P<title>.+?)
-        \]
-        \(
-        (?P<filename>.+?)
-        \)
-    ").unwrap();
+fn extract_chapters(toc: &str) -> Result<Vec<Chapter>, Error> {
+    lazy_static_regex!(TOC_MATCHER,      TOC_PATTERN     );
+    lazy_static_regex!(FILENAME_MATCHER, FILENAME_PATTERN);
 
-    let filename_pattern = Regex::new(r"(?x)
-        ^
-        (?P<path>(.*)/)?
-        (?P<name>(.*?))
-        (?P<ext>\.(\w*))?
-        $
-    ").unwrap();
+    let chapters = toc
+        .lines()
+        .filter_map(|line| TOC_MATCHER.captures(line))
+        .map(|chapter_match| {
+            let level         = chapter_match.name("indent"  ).unwrap().as_str().chars().count();
+            let link_filename = chapter_match.name("filename").unwrap().as_str();
+            let link_title    = chapter_match.name("title"   ).unwrap().as_str();
 
-    toc.lines()
-    .filter_map(|l| toc_pattern.captures(l))
-    .map(|link| {
-        let level = if link.name("indent").unwrap().chars().count() == 0 { "#" } else { "##" };
-        let id = filename_pattern.captures(
-            link.name("filename").unwrap()
-        ).unwrap().name("name").unwrap();
+            let link_value = FILENAME_MATCHER
+                .captures(link_filename).unwrap()
+                .name("name").unwrap()
+                .as_str();
 
-        let headline = format!(
-            "{level} {name} {{#sec--{link}}}\n",
-            level = level, name = link.name("title").unwrap(), link = id
-        );
+            let headline = format!(
+                "{empty:#^level$} {name} {{#sec--{link}}}\n",
+                empty = "",
+                level = level,
+                name = link_title,
+                link = link_value
+            );
 
-        Chapter {
-            file: link.name("filename").unwrap().into(),
-            headline: headline,
-        }
-    })
-    .collect::<Vec<Chapter>>()
+            Chapter {
+                file: link_filename.to_string(),
+                headline: headline,
+            }
+        }).collect();
+    
+    Ok(chapters)
 }
 
-pub fn to_single_file(src_path: &Path, meta: &str) -> Result<String, Box<Error>> {
-    put!("Reading book");
+pub fn import_markdown<P>(
+    filepath: P,
+    title_level: usize,
+    ref_prefix: &str
+) -> Result<String, Error>
+where
+    P: AsRef<Path>
+{
+    let markdown = file_to_string(filepath)?
+        .increase_title_level(title_level)
+        .remove_markdown_file_title()
+        .prefix_refs_with(ref_prefix)
+        .normalize_all(87, "↳ "); // TODO make constant
+    
+    Ok(markdown)
+}
 
-    let toc = try!(file::get_file_content(&src_path.join("SUMMARY.md")));
-    put!(".");
-
+pub fn to_single_file<P>(
+    src_path: P,
+    meta_path: P,
+    release_date: &str
+) -> Result<String, Error>
+where
+    P: AsRef<Path>,
+{
+    let src_path = |filename: &str| src_path.as_ref().join(filename);
     let mut book = String::new();
 
-    book.push_str(meta);
-    book.push_str("\n");
+    println!("Reading metadata...");
+    let metadata = file_to_string(meta_path)?.replace("{release_date}", release_date);
+    book.push_str(metadata.as_str());
+    book.push('\n');
 
-    {
-        // Readme ~ "Getting Started"
-        let file = try!(file::get_file_content(&src_path.join("README.md")));
-        let mut content = try!(adjust_header_level::adjust_header_level(&file, 1));
-        content = try!(remove_file_title::remove_file_title(&content));
-        content = try!(adjust_reference_names::adjust_reference_name(&content, "readme"));
-        content = try!(normalize::normalize(&content));
+    println!("Aggregating markdown...");
+    
+    println!("  MD README.md");
+    let cover = import_markdown(src_path("README.md"), 1, "readme")?;
+    book.push_str("\n\n# Introduction\n\n");
+    book.push_str(&cover);
 
-        put!(".");
+    let toc = file_to_string(src_path("SUMMARY.md"))?;
+    let chapters = extract_chapters(&toc)?;
 
-        book.push_str("\n\n");
-        book.push_str("# Introduction");
-        book.push_str("\n\n");
-        book.push_str(&content);
-    }
+    for chapter_match in chapters {
+        println!("  MD {}", chapter_match.file);
 
-    for chapter in &get_chapters(&toc) {
-        let file = try!(file::get_file_content(&src_path.join(&chapter.file)));
-
-        let mut content = try!(adjust_header_level::adjust_header_level(&file, 3));
-        content = try!(remove_file_title::remove_file_title(&content));
-        content = try!(adjust_reference_names::adjust_reference_name(&content, &chapter.file));
-        content = try!(normalize::normalize(&content));
-
-        put!(".");
+        let chapter_content = import_markdown(
+            src_path(&chapter_match.file), 3, &chapter_match.file
+        )?;
 
         book.push_str("\n\n");
-        book.push_str(&chapter.headline);
+        book.push_str(&chapter_match.headline);
         book.push_str("\n");
-        book.push_str(&content);
+        book.push_str(&chapter_content);
     }
-
-    put!(" done.\n");
 
     Ok(book)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 }

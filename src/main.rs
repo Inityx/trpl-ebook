@@ -2,24 +2,32 @@
 //!
 //! ['The Rust Programming Language'][trpl] is originally published as Markdown
 //! and rendered by _rustbook_. This set of scripts does some transformations
-//! and uses _Pandoc_ to render it as HTML, EPUB and PDF (usign LaTeX).
+//! and uses _Pandoc_ to render it as HTML, EPUB and PDF (using LaTeX).
 //!
 //! [trpl]: http://doc.rust-lang.org/book/
 
+#![feature(plugin)]
+#![feature(entry_or_default)]
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
+#![recursion_limit = "1024"]
 
 extern crate regex;
 extern crate docopt;
-extern crate rustc_serialize;
+#[macro_use] extern crate lazy_static;
+extern crate failure;
 
-use std::path::Path;
+#[macro_use] mod text;
+mod convert_book;
+
 use docopt::Docopt;
+use std::{
+    fs::File,
+    io::Write,
+};
+use text::OrDefaultExt;
 
-pub mod helpers;
-pub mod convert_book;
-
-static USAGE: &'static str = r#"
+const USAGE: &str = r#"
 Compile Rustbook to EBook formats.
 
 Usage:
@@ -31,25 +39,21 @@ Options:
   --meta=<meta_file>    Meta data of your book, needs to contain `date: {release_date}`.
 "#;
 
-#[derive(Debug, RustcDecodable)]
-struct Args {
-    flag_prefix: Option<String>,
-    flag_source: Option<String>,
-    flag_meta: Option<String>,
-}
-
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
+    let args = Docopt::new(USAGE)
+        .and_then(|d| d.parse())
         .unwrap_or_else(|e| e.exit());
 
-    let prefix = args.flag_prefix.unwrap_or("trpl".to_owned());
-    let source = args.flag_source.unwrap_or("trpl".to_owned());
-    let meta = args.flag_meta.unwrap_or("trpl_meta.yml".to_owned());
-
-    convert_book::render_book(&prefix, &Path::new(&source), &meta).unwrap();
+    convert_book::render_book(
+        &args.get_str("<prefix>"   ).or_default("trpl"),
+        &args.get_str("<directory>").or_default("trpl"),
+        &args.get_str("<flag_meta>").or_default("trpl_meta.yml"),
+    ).unwrap();
 
     let index = convert_book::index::render_index("dist/").unwrap();
-    helpers::file::write_string_to_file(&index, "dist/index.html").unwrap();
-    println!("[✓] {}", "Index");
+    File::create("dist/index.html")
+        .and_then(|mut f| f.write_all(index.as_bytes()))
+        .unwrap();
+    
+    println!("[✓] Index");
 }
