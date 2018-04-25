@@ -4,7 +4,7 @@ pub mod reg {
         ($name:ident, $source:expr) => {
             lazy_static! {
                 static ref $name: ::regex::Regex = ::regex::Regex::new($source)
-                    .expect(format!("Invalid regex: {}", $source).as_str());
+                    .expect(&format!("Invalid regex: {}", $source));
             }
         };
     }
@@ -16,22 +16,22 @@ pub mod reg {
 
     pub mod links {
         pub mod src {
-            pub const SEC       : &str = r"]\((?P<file>[\w-_]+)\.html\)";
-            pub const SEC_REF   : &str = r"(?m)^\[(?P<id>.+)\]:\s(?P<file>[^:^/]+)\.html$";
-            pub const SUBSEC    : &str = r"]\((?P<file>[\w-_]+)\.html#(?P<subsection>[\w-_]+)\)";
-            pub const SUBSEC_REF: &str = r"(?m)^\[(?P<id>.+)\]:\s(?P<file>[^:^/]+)\.html#(?P<subsection>[\w-_]+)$";
+            pub const SEC:        &str = r"]\((?P<file>[\w_-]+)\.html\)";
+            pub const SEC_REF:    &str = r"(?m)^\[(?P<id>.+)\]:\s(?P<file>[^:^/]+)\.html$";
+            pub const SUBSEC:     &str = r"]\((?P<file>[\w\-_]+)\.html#(?P<subsection>[\w_-]+)\)";
+            pub const SUBSEC_REF: &str = r"(?m)^\[(?P<id>.+)\]:\s(?P<file>[^:^/]+)\.html#(?P<subsection>[\w_-]+)$";
         }
         pub mod replace {
-            pub const SEC       : &str = r"](#sec--$file)";
-            pub const SEC_REF   : &str = r"[$id]: #sec--$file";
-            pub const SUBSEC    : &str = r"](#$subsection)";
+            pub const SEC:        &str = r"](#sec--$file)";
+            pub const SEC_REF:    &str = r"[$id]: #sec--$file";
+            pub const SUBSEC:     &str = r"](#$subsection)";
             pub const SUBSEC_REF: &str = r"[$id]: #$subsection";
         }
     }
 
     pub mod reference {
-        pub const LINK      : &str = r"(?x)\]\[(?P<id>.+?)\]";
-        pub const FOOTNOTE  : &str = r"(?x)\[\^(?P<id>.+?)\]";
+        pub const LINK:       &str = r"(?x)\]\[(?P<id>.+?)\]";
+        pub const FOOTNOTE:   &str = r"(?x)\[\^(?P<id>.+?)\]";
         pub const DEFINITION: &str = r"(?x)^\[(?P<footnote>\^)?(?P<id>.+)\]:\s(?P<link>.+)$";
     }
 
@@ -41,9 +41,10 @@ pub mod reg {
     }
 
     pub mod mdfile {
-        pub const TITLE:  &str = r"^%\s(.+)\n";
-        pub const HEADER: &str = r"(?x)^(?P<level>[\#]+)\s(?P<title>.+)$";
-        pub const NAME:   &str = r"^(?P<prefix>\w+)-(?P<date>\d{4}-\d{2}-\d{2})\.(?P<ext>.+)$";
+        pub const TITLE:    &str = r"^%\s(.+)\n";
+        pub const HEADER:   &str = r"(?x)^(?P<level>[\#]+)\s(?P<title>.+)$";
+        pub const TOC:      &str = r"(?x)(?P<indent>\s*?)\*\s\[(?P<title>.+?)\]\((?P<filename>.+?)\)";
+        pub const FILENAME: &str = r"(?x)^(?P<path>(.*)/)?(?P<name>(.*?))(?P<ext>\.(\w*))?$";
     }
 }
 

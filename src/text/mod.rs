@@ -4,42 +4,11 @@ pub mod references;
 
 use self::patterns::reg;
 
-pub trait OrDefaultExt: AsRef<str> + Sized {
-    #[inline(always)]
-    fn to_option(self) -> Option<Self> {
-        let has_arg = {
-            let s: &str = self.as_ref();
-            !s.is_empty() && !s.is_whitespace()
-        };
-        if has_arg { Some(self) } else { None }
-    }
-
-    fn or_default(self, other: Self) -> Self {
-        self.to_option().unwrap_or(other)
-    }
-
-    fn or_else_default<F>(self, f: F) -> Self where F: FnOnce() -> Self {
-        self.to_option().unwrap_or_else(f)
-    }
-}
-
-impl<S> OrDefaultExt for S where S: AsRef<str> {}
-
 pub trait MatchExt: AsRef<str> + Sized {
     fn toggles_code_block(&self) -> bool {
         self
             .as_ref()
             .starts_with(patterns::CODE_BLOCK_TOGGLE)
-    }
-
-    fn ending_newlines(&self) -> String {
-        let is_newline = |c: &char| *c == '\n';
-        self
-            .as_ref()
-            .chars()
-            .rev()
-            .take_while(is_newline)
-            .collect()
     }
 }
 
@@ -47,6 +16,9 @@ impl<S> MatchExt for S where S: AsRef<str> {}
 
 pub trait AdjustExt: AsRef<str> + Sized {
     fn line_break_at(self, max_len: usize, separator: &str) -> String {
+        // TODO specialize
+        if self.as_ref().len() <= max_len { return self.as_ref().to_string() }
+
         let adjusted_len = max_len - separator.chars().count();
 
         let mut collector = String::with_capacity(self.as_ref().len());
@@ -72,37 +44,33 @@ pub trait AdjustExt: AsRef<str> + Sized {
         lazy_static_regex!(HEADER_PATTERN, reg::mdfile::HEADER);
 
         let mut in_code_block = false;
-        let mut collector = Vec::new();
+        let mut collector = String::with_capacity(self.as_ref().len());
 
         for line in self.as_ref().lines() {
             let toggling_code = line.toggles_code_block();
             
             if in_code_block && !toggling_code {
-                collector.push(line.to_string());
-                continue;
-            }
-
-            if toggling_code { in_code_block = !in_code_block }
-
-            let to_push = if let Some(headline) = HEADER_PATTERN.captures(line) {
+                collector.push_str(line);
+            } else if let Some(headline) = HEADER_PATTERN.captures(line) {
                 // '#' is always 1 byte, so .len() is safe to use.
                 let old_level = headline.name("level").unwrap().as_str().len();
                 let new_level = old_level + increase - 1;
 
-                format!(
+                collector.push_str(&format!(
                     "{empty:#^num_hashes$} {title}\n",
                     empty = "",
                     num_hashes = new_level,
                     title = headline.name("title").unwrap().as_str()
-                )
+                ))
             } else {
-                line.to_string()
+                collector.push_str(line);
+                if toggling_code { in_code_block = !in_code_block }
             };
 
-            collector.push(to_push);
+            collector.push('\n');
         }
 
-        collector.join("\n")
+        collector
     }
 
     fn remove_markdown_file_title(self) -> String {
@@ -121,14 +89,6 @@ mod tests {
     fn code_block_toggle() {
         assert!("```wharglbargl".toggles_code_block());
         assert!(!"other thing".toggles_code_block());
-    }
-
-    #[test]
-    fn ending_newlines() {
-        assert_eq!(
-            "\n\n\n",
-            "here's\na thing\n\n\n".ending_newlines()
-        )
     }
 
     const LONG_LINE: &str =

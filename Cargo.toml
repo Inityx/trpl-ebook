@@ -12,6 +12,8 @@ failure = "0.1"
 regex = "0.2.10"
 lazy_static = "1.0"
 docopt = "0.8.3"
+serde = "1.0"
+serde_derive = "1.0"
 
 [dependencies.clippy]
 git = "https://github.com/Manishearth/rust-clippy.git"

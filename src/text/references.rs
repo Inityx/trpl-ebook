@@ -54,32 +54,29 @@ fn replace_ref_defn(line: &str, prefix: &str) -> Option<String> {
 
 pub trait MdRefsExt: AsRef<str> + Sized {
     fn prefix_refs_with(self, prefix: &str) -> String {
-
         let mut in_code_block = false;
-        let mut collector = Vec::new();
+        let mut collector = String::with_capacity(self.as_ref().len());
 
         for line in self.as_ref().lines() {
             let toggling_code = line.toggles_code_block();
 
             if in_code_block && !toggling_code {
-                collector.push(line.to_string());
-                continue;
+                collector.push_str(line);
+            } else {
+                let to_push = match line {
+                    l if REF_LINK.is_match(l) => replace_ref_link(line, prefix),
+                    l if FOOTNOTE.is_match(l) => replace_footnote(line, prefix),
+                    l => replace_ref_defn(l, prefix).unwrap_or_else(|| l.to_string()),
+                };
+                collector.push_str(&to_push);
+
+                if toggling_code { in_code_block = !in_code_block; }
             }
 
-            if toggling_code {
-                in_code_block = !in_code_block;
-            }
-            
-            let to_push = match line {
-                l if REF_LINK.is_match(l) => replace_ref_link(line, prefix),
-                l if FOOTNOTE.is_match(l) => replace_footnote(line, prefix),
-                l => replace_ref_defn(l, prefix).unwrap_or_else(|| l.to_string()),
-            };
-
-            collector.push(to_push);
+            collector.push('\n');
         }
 
-        collector.join("\n")
+        collector
     }
 }
 
@@ -91,16 +88,18 @@ mod tests {
 
     const REFERENCE_PREFIX: &str = "PREFIX";
     const WITH_REFERENCES: &str =
-        "Lorem ipsum [dolor sit][amet], [consectetur adipisicing][elit]. \
-        Odio provident repellendus temporibus possimus magnam odit \
-        [neque obcaecati][illo], ab tenetur deserunt quae quia? \
-        Asperiores a hic, maiores quaerat, autem ea!";
+"Lorem ipsum [dolor sit][amet], [consectetur adipisicing][elit]. \
+Odio provident repellendus temporibus possimus magnam odit \
+[neque obcaecati][illo], ab tenetur deserunt quae quia? \
+Asperiores a hic, maiores quaerat, autem ea!
+";
     const WITH_PREFIXED_REFERENCES: &str =
-        "Lorem ipsum [dolor sit][PREFIX--amet], \
-        [consectetur adipisicing][PREFIX--elit]. Odio provident \
-        repellendus temporibus possimus magnam odit \
-        [neque obcaecati][PREFIX--illo], ab tenetur deserunt quae quia? \
-        Asperiores a hic, maiores quaerat, autem ea!";
+"Lorem ipsum [dolor sit][PREFIX--amet], \
+[consectetur adipisicing][PREFIX--elit]. Odio provident \
+repellendus temporibus possimus magnam odit \
+[neque obcaecati][PREFIX--illo], ab tenetur deserunt quae quia? \
+Asperiores a hic, maiores quaerat, autem ea!
+";
 
     #[test]
     fn reference_renaming() {
