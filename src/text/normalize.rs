@@ -83,49 +83,51 @@ mod tests {
         )
     }
 
-    const CODE_BLOCKS: &str = "Code:
+    const CODE_BLOCKS: &str = indoc!("
+        Code:
 
-```sh
-$ lol
-```
+        ```sh
+        $ lol
+        ```
 
-```{rust,ignore}
-let x = true;
-```
+        ```{rust,ignore}
+        let x = true;
+        ```
 
-``` rust,no_extras
-let x = true;
-```
+        ``` rust,no_extras
+        let x = true;
+        ```
 
-```rust
-# use magic::from_the_future::*;
-#
-# #[inline]
-# fn extension(file_name: &str) -> Option<&str> {
-#     find(file_name, '.').map(|i| &file_name[i+1..])
-# }
-let x = true;
-```
-";
+        ```rust
+        # use magic::from_the_future::*;
+        #
+        # #[inline]
+        # fn extension(file_name: &str) -> Option<&str> {
+        #     find(file_name, '.').map(|i| &file_name[i+1..])
+        # }
+        let x = true;
+        ```
+        ");
 
-    const CODE_BLOCKS_CLEAN: &str = "Code:
+    const CODE_BLOCKS_CLEAN: &str = indoc!("
+        Code:
 
-```sh
-$ lol
-```
+        ```sh
+        $ lol
+        ```
 
-```rust
-let x = true;
-```
+        ```rust
+        let x = true;
+        ```
 
-```rust
-let x = true;
-```
+        ```rust
+        let x = true;
+        ```
 
-```rust
-let x = true;
-```
-";
+        ```rust
+        let x = true;
+        ```
+        ");
 
     #[test]
     fn code_block_starts() {

@@ -91,17 +91,19 @@ mod tests {
         assert!(!"other thing".toggles_code_block());
     }
 
-    const LONG_LINE: &str =
-"markdown+grid_tables+pipe_tables+raw_html+implicit_figures\
-+footnotes+intraword_underscores+auto_identifiers-inline_code_attributesmarkdow\
-n+grid_tables+pipe_tables+raw_html+implicit_figures+footnotes+intraword_undersc\
-ores+auto_identifiers-inline_code_attributes";
+    const LONG_LINE: &str = indoc!("
+        markdown+grid_tables+pipe_tables+raw_html+implicit_figures\
+        +footnotes+intraword_underscores+auto_identifiers-inline_code_attributesmarkdow\
+        n+grid_tables+pipe_tables+raw_html+implicit_figures+footnotes+intraword_undersc\
+        ores+auto_identifiers-inline_code_attributes
+        ");
 
-    const CORRECT_SPLIT: &str =
-"markdown+grid_tables+pipe_tables+raw_html+implicit_figures+footnotes+intraword_u
-↳ nderscores+auto_identifiers-inline_code_attributesmarkdown+grid_tables+pipe_ta
-↳ bles+raw_html+implicit_figures+footnotes+intraword_underscores+auto_identifier
-↳ s-inline_code_attributes";
+    const CORRECT_SPLIT: &str = indoc!("
+        markdown+grid_tables+pipe_tables+raw_html+implicit_figures+footnotes+intraword_u
+        ↳ nderscores+auto_identifiers-inline_code_attributesmarkdown+grid_tables+pipe_ta
+        ↳ bles+raw_html+implicit_figures+footnotes+intraword_underscores+auto_identifier
+        ↳ s-inline_code_attributes
+        ");
 
     #[test]
     fn long_lines() {

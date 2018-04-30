@@ -87,19 +87,19 @@ mod tests {
     use super::*;
 
     const REFERENCE_PREFIX: &str = "PREFIX";
-    const WITH_REFERENCES: &str =
-"Lorem ipsum [dolor sit][amet], [consectetur adipisicing][elit]. \
-Odio provident repellendus temporibus possimus magnam odit \
-[neque obcaecati][illo], ab tenetur deserunt quae quia? \
-Asperiores a hic, maiores quaerat, autem ea!
-";
-    const WITH_PREFIXED_REFERENCES: &str =
-"Lorem ipsum [dolor sit][PREFIX--amet], \
-[consectetur adipisicing][PREFIX--elit]. Odio provident \
-repellendus temporibus possimus magnam odit \
-[neque obcaecati][PREFIX--illo], ab tenetur deserunt quae quia? \
-Asperiores a hic, maiores quaerat, autem ea!
-";
+    const WITH_REFERENCES: &str = indoc!("
+        Lorem ipsum [dolor sit][amet], [consectetur adipisicing][elit]. \
+        Odio provident repellendus temporibus possimus magnam odit \
+        [neque obcaecati][illo], ab tenetur deserunt quae quia? \
+        Asperiores a hic, maiores quaerat, autem ea!
+        ");
+    const WITH_PREFIXED_REFERENCES: &str = indoc!("
+        Lorem ipsum [dolor sit][PREFIX--amet], \
+        [consectetur adipisicing][PREFIX--elit]. Odio provident \
+        repellendus temporibus possimus magnam odit \
+        [neque obcaecati][PREFIX--illo], ab tenetur deserunt quae quia? \
+        Asperiores a hic, maiores quaerat, autem ea!
+        ");
 
     #[test]
     fn reference_renaming() {

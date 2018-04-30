@@ -9,6 +9,7 @@ use std::{
 };
 
 use failure::{Error, ResultExt};
+use self::markdown::TableOfContents;
 
 #[derive(Clone, Copy)]
 pub enum FileFormat { Html, Epub, Markdown }
@@ -79,30 +80,28 @@ where
     println!("Aggregating markdown...");
     {
         println!("  MD README.md");
-        let cover = markdown::convert(
-            &file_to_string(&src_path("README.md"))?,
-            1,
-            "readme"
-        );
+        let readme_md = &file_to_string(&src_path("README.md"))?;
+        let introduction = markdown::convert(readme_md, 1, "readme");
         book.push_str("\n\n# Introduction\n\n");
-        book.push_str(&cover);
+        book.push_str(&introduction);
     }
 
-    let chapters = {
-        let toc = file_to_string(&src_path("SUMMARY.md"))?;
-        markdown::extract_chapters(&toc)
-    }?;
+    let table_of_contents = file_to_string(&src_path("SUMMARY.md"))?
+        .parse::<TableOfContents>()?;
 
-    for toc_chapter_match in chapters {
-        println!("  MD {}", toc_chapter_match.filename);
+    for chapter in table_of_contents {
+        println!("  MD {}", chapter.filename);
 
+        // Markdown chapter title
         book.push_str("\n\n");
-        book.push_str(&toc_chapter_match.headline);
+        for _ in 0..chapter.nest_level { book.push('#') }
+        book.push(' ');
+        book.push_str(&chapter.header);
 
         let chapter_content = markdown::convert(
-            &file_to_string(&src_path(&toc_chapter_match.filename))?,
+            &file_to_string(&src_path(&chapter.filename))?,
             3,
-            &toc_chapter_match.filename
+            &chapter.filename
         );
 
         book.push_str("\n");

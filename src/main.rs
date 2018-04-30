@@ -7,6 +7,7 @@ extern crate failure;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate indoc;
 
 #[macro_use] mod text;
 mod book;
@@ -27,7 +28,7 @@ fn main() {
     ).unwrap();
 
     for format in FORMATS.iter().cloned() {
-        print!("Rendering Pandoc {}...", format);
+        print!("Rendering Pandoc {}... ", format);
         stdout().flush().unwrap();
 
         book::render_to(
@@ -37,6 +38,6 @@ fn main() {
             RELEASE_DATE,
         ).unwrap();
 
-        println!(" done.");
+        println!("Done.");
     }
 }

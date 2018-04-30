@@ -1,17 +1,17 @@
 use ::docopt::Docopt;
 
-const USAGE: &str = r#"
-Compile Rustbook to EBook formats.
+const USAGE: &str = indoc!(r#"
+    Compile Rustbook to EBook formats.
 
-Usage:
-  compile-trpl [--prefix PREFIX] [--source DIRECTORY] [--meta FILE]
+    Usage:
+    compile-trpl [--prefix PREFIX] [--source DIRECTORY] [--meta FILE]
 
-Options:
-  -h, --help          Show this message
-  --prefix PREFIX     Book prefix/short name [default: trpl]
-  --source DIRECTORY  Book markdown directory [default: trpl]
-  --meta FILE         Metadata, must contain `date: {release_date}` [default: trpl_meta.yml]
-"#;
+    Options:
+    -h, --help          Show this message
+    --prefix PREFIX     Book prefix/short name [default: trpl]
+    --source DIRECTORY  Book markdown directory [default: trpl]
+    --meta FILE         Metadata, must contain `date: {release_date}` [default: trpl_meta.yml]
+    "#);
 
 #[derive(Deserialize, Debug)]
 pub struct Args {
