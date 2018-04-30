@@ -14,10 +14,9 @@ mod book;
 mod args;
 
 use std::io::{stdout, Write};
-use book::{FileFormat, FileFormat::*};
+use book::Format::*;
 
 const RELEASE_DATE: &str = "2016-10-01";
-const FORMATS: [FileFormat;3] = [Markdown, Epub, Html];
 
 fn main() {
     let options = args::get();
@@ -27,14 +26,14 @@ fn main() {
         RELEASE_DATE
     ).unwrap();
 
-    for format in FORMATS.iter().cloned() {
+    for format in &[Markdown, Epub, Html] {
         print!("Rendering Pandoc {}... ", format);
         stdout().flush().unwrap();
 
         book::render_to(
             &markdown,
             &options.flag_prefix,
-            format,
+            *format,
             RELEASE_DATE,
         ).unwrap();
 

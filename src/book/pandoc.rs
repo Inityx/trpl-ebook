@@ -5,7 +5,7 @@ use std::{
 
 use failure::{Error, ResultExt, err_msg};
 
-use super::FileFormat;
+use super::Format;
 
 const PANDOC: &str = "pandoc";
 
@@ -16,8 +16,8 @@ mod options {
     pub const TO_EPUB: &str = "--css=lib/epub.css";
 }
 
-fn options_for(format: FileFormat) -> &'static str {
-    use self::FileFormat::*;
+fn options_for(format: Format) -> &'static str {
+    use self::Format::*;
     match format {
         Html => options::TO_HTML,
         Epub => options::TO_EPUB,
@@ -28,19 +28,19 @@ fn options_for(format: FileFormat) -> &'static str {
 pub fn create(
     contents: &str,
     file_prefix: &str,
-    output_type: FileFormat,
+    format: Format,
     release_date: &str
 ) -> Result<(), Error> {
     let mut child = Command::new(PANDOC)
         .arg(options::FROM_MD)
         .args(options::TO_ALL.split(' '))
-        .args(options_for(output_type).split(' '))
+        .args(options_for(format).split(' '))
         .arg(
             &format!(
                 "--output=dist/{}-{}.{}",
                 file_prefix,
                 release_date,
-                output_type.file_extension()
+                format.file_extension()
             )
         )
         .stdin(Stdio::piped())
@@ -53,11 +53,11 @@ pub fn create(
         return Err(err_msg("Failed to get pandoc stdin"));
     }
 
-    if child.wait()?.success() {
-        Ok(())
-    } else {
-        Err(err_msg("Pandoc exited unsuccessfully."))
+    if !child.wait()?.success() {
+        return Err(err_msg("Pandoc exited unsuccessfully."));
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

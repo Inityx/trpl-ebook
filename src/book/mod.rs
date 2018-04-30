@@ -12,11 +12,11 @@ use failure::{Error, ResultExt};
 use self::markdown::TableOfContents;
 
 #[derive(Clone, Copy)]
-pub enum FileFormat { Html, Epub, Markdown }
+pub enum Format { Html, Epub, Markdown }
 
-impl FileFormat {
+impl Format {
     fn file_extension(&self) -> &'static str {
-        use self::FileFormat::*;
+        use self::Format::*;
         match self {
             Html => "html",
             Epub => "epub",
@@ -25,18 +25,14 @@ impl FileFormat {
     }
 }
 
-impl Display for FileFormat {
+impl Display for Format {
     fn fmt(&self, mut fmt: &mut Formatter) -> Result<(), fmt::Error> {
-        use self::FileFormat::*;
-        write!(
-            &mut fmt,
-            "{}",
-            match self {
-                Html => "HTML",
-                Epub => "ePub",
-                Markdown => "Markdown"
-            },
-        )
+        use self::Format::*;
+        write!(&mut fmt, "{}", match self {
+            Html => "HTML",
+            Epub => "ePub",
+            Markdown => "Markdown",
+        })
     }
 }
 
@@ -125,10 +121,10 @@ fn write_markdown(
 pub fn render_to(
     markdown: &str,
     prefix: &str,
-    format: FileFormat,
+    format: Format,
     release_date: &str,
 ) -> Result<(), Error> {
-    use self::FileFormat::*;
+    use self::Format::*;
     match format {
         Markdown => write_markdown(markdown, prefix, release_date),
         _ => pandoc::create(

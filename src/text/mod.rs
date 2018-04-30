@@ -27,11 +27,13 @@ pub trait AdjustExt: AsRef<str> + Sized {
         collector.push_str(first);
         collector.push('\n');
 
+        // because str::chunks() does not exist
         let rest_chars: Vec<char> = rest.chars().collect();
         let rest_lines = rest_chars.as_slice().chunks(adjusted_len);
         
         for line in rest_lines {
             collector.push_str(separator);
+            // because String::extend does not exist
             for chr in line { collector.push(*chr) }
             collector.push('\n');
         }
@@ -40,6 +42,8 @@ pub trait AdjustExt: AsRef<str> + Sized {
         collector
     }
 
+    // TODO: Why is this code so complex
+    //       Just put more '#'s at the beginning
     fn increase_title_level(self, increase: usize) -> String {
         lazy_static_regex!(HEADER_PATTERN, reg::mdfile::HEADER);
 
@@ -47,9 +51,7 @@ pub trait AdjustExt: AsRef<str> + Sized {
         let mut collector = String::with_capacity(self.as_ref().len());
 
         for line in self.as_ref().lines() {
-            let toggling_code = line.toggles_code_block();
-            
-            if in_code_block && !toggling_code {
+            if in_code_block && !line.toggles_code_block() {
                 collector.push_str(line);
             } else if let Some(headline) = HEADER_PATTERN.captures(line) {
                 // '#' is always 1 byte, so .len() is safe to use.
@@ -64,7 +66,9 @@ pub trait AdjustExt: AsRef<str> + Sized {
                 ))
             } else {
                 collector.push_str(line);
-                if toggling_code { in_code_block = !in_code_block }
+                if line.toggles_code_block() {
+                    in_code_block = !in_code_block
+                }
             };
 
             collector.push('\n');
