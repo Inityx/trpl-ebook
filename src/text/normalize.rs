@@ -2,10 +2,12 @@ use super::patterns::reg;
 
 pub trait NormalizeExt: AsRef<str> + Sized {
     fn normalize_links(self) -> String {
-        lazy_static_regex!(SEC_LINK,    reg::links::src::SEC       );
-        lazy_static_regex!(SEC_REF,     reg::links::src::SEC_REF   );
-        lazy_static_regex!(SUBSEC_LINK, reg::links::src::SUBSEC    );
-        lazy_static_regex!(SUBSEC_REF,  reg::links::src::SUBSEC_REF);
+        use self::reg::links::{src, replace};
+
+        lazy_static_regex!(SEC_LINK,    src::SEC       );
+        lazy_static_regex!(SEC_REF,     src::SEC_REF   );
+        lazy_static_regex!(SUBSEC_LINK, src::SUBSEC    );
+        lazy_static_regex!(SUBSEC_REF,  src::SUBSEC_REF);
 
         let output = self
             .as_ref()
@@ -17,21 +19,19 @@ pub trait NormalizeExt: AsRef<str> + Sized {
             .replace(r"../adv-book",  r"http://doc.rust-lang.org/adv-book" )
             .replace(r"../core",      r"http://doc.rust-lang.org/core"     );
         
-        let output = SEC_LINK   .replace_all(&output, reg::links::replace::SEC       );
-        let output = SEC_REF    .replace_all(&output, reg::links::replace::SEC_REF   );
-        let output = SUBSEC_LINK.replace_all(&output, reg::links::replace::SUBSEC    );
-        let output = SUBSEC_REF .replace_all(&output, reg::links::replace::SUBSEC_REF);
+        let output = SEC_LINK   .replace_all(&output, replace::SEC       );
+        let output = SEC_REF    .replace_all(&output, replace::SEC_REF   );
+        let output = SUBSEC_LINK.replace_all(&output, replace::SUBSEC    );
+        let output = SUBSEC_REF .replace_all(&output, replace::SUBSEC_REF);
 
         output.to_string()
     }
 
     fn normalize_math(self) -> String {
         lazy_static_regex!(SUPERSCRIPT, reg::math::SUPERSCRIPT_SRC);
+        
         SUPERSCRIPT
-            .replace_all(
-                self.as_ref(),
-                reg::math::SUPERSCRIPT_REPLACE
-            )
+            .replace_all(self.as_ref(), reg::math::SUPERSCRIPT_REPLACE)
             .to_string()
     }
 

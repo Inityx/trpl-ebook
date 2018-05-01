@@ -3,17 +3,21 @@ use std::{
     io::Write,
 };
 
-use failure::{Error, ResultExt, err_msg};
+use failure::{Error, ResultExt};
 
-use super::Format;
+use file::Format;
 
 const PANDOC: &str = "pandoc";
 
 mod options {
-    pub const FROM_MD: &str = "--from=markdown+grid_tables+pipe_tables-simple_tables+raw_html+implicit_figures+footnotes+intraword_underscores+auto_identifiers-inline_code_attributes";
     pub const TO_ALL : &str = "--standalone --self-contained --highlight-style=tango --table-of-contents";
     pub const TO_HTML: &str = "--css=lib/pandoc.css --to=html5 --section-divs --template=lib/template.html";
     pub const TO_EPUB: &str = "--css=lib/epub.css";
+    pub const FROM_MD: &str = indoc!("
+        --from=markdown+grid_tables+pipe_tables-simple_tables+raw_html+implicit\
+        _figures+footnotes+intraword_underscores+auto_identifiers-inline_code\
+        _attributes
+        ");
 }
 
 fn options_for(format: Format) -> &'static str {
@@ -35,14 +39,12 @@ pub fn create(
         .arg(options::FROM_MD)
         .args(options::TO_ALL.split(' '))
         .args(options_for(format).split(' '))
-        .arg(
-            &format!(
-                "--output=dist/{}-{}.{}",
-                file_prefix,
-                release_date,
-                format.file_extension()
-            )
-        )
+        .arg(&format!(
+            "--output=dist/{}-{}.{}",
+            file_prefix,
+            release_date,
+            format.file_extension()
+        ))
         .stdin(Stdio::piped())
         .spawn()
         .context("Failed to execute pandoc")?;
@@ -50,11 +52,11 @@ pub fn create(
     if let Some(stdin) = child.stdin.as_mut() {
         stdin.write_all(contents.as_bytes())?;
     } else {
-        return Err(err_msg("Failed to get pandoc stdin"));
+        bail!("Failed to get pandoc stdin");
     }
 
     if !child.wait()?.success() {
-        return Err(err_msg("Pandoc exited unsuccessfully."));
+        bail!("Pandoc exited unsuccessfully.");
     }
 
     Ok(())

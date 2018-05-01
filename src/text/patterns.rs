@@ -30,9 +30,9 @@ pub mod reg {
     }
 
     pub mod reference {
-        pub const LINK:       &str = r"(?x)\]\[(?P<id>.+?)\]";
-        pub const FOOTNOTE:   &str = r"(?x)\[\^(?P<id>.+?)\]";
-        pub const DEFINITION: &str = r"(?x)^\[(?P<footnote>\^)?(?P<id>.+)\]:\s(?P<link>.+)$";
+        pub const LINK:     &str = r"(?x)\]\[(?P<id>.+?)\]";
+        pub const FOOTNOTE: &str = r"(?x)\[\^(?P<id>.+?)\]";
+        pub const URL:      &str = r"(?x)^\[(?P<footnote>\^)?(?P<id>.+)\]:\s(?P<link>.+)$";
     }
 
     pub mod math {
@@ -41,10 +41,9 @@ pub mod reg {
     }
 
     pub mod mdfile {
-        pub const TITLE:    &str = r"^%\s(.+)\n";
-        pub const HEADER:   &str = r"(?x)^(?P<level>[\#]+)\s(?P<title>.+)$";
-        pub const TOC:      &str = r"(?x)(?P<indent>\s*?)\*\s\[(?P<title>.+?)\]\((?P<filename>.+?)\)";
-        pub const FILENAME: &str = r"(?x)^(?P<path>(.*)/)?(?P<name>(.*?))(?P<ext>\.(\w*))?$";
+        pub const TITLE:  &str = r"^%\s(.+)\n";
+        pub const HEADER: &str = r"(?x)^(?P<level>[\#]+)\s(?P<title>.+)$";
+        pub const TOC:    &str = r"(?x)(?P<indent>\s*?)\*\s\[(?P<title>.+?)\]\((?P<filename>.+?)\)";
     }
 }
 

@@ -1,6 +1,7 @@
 #[macro_use] pub mod patterns;
 pub mod normalize;
 pub mod references;
+pub mod str_iter;
 
 use self::patterns::reg;
 

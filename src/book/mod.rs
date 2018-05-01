@@ -1,138 +1,92 @@
-pub mod markdown;
+pub mod table_of_contents;
 pub mod pandoc;
 
 use std::{
-    fs::File,
-    io::{Write, Read},
-    fmt::{self, Display, Formatter},
+    io::self,
     path::Path,
 };
 
-use failure::{Error, ResultExt};
-use self::markdown::TableOfContents;
+use failure::Error;
+use self::table_of_contents::TableOfContents;
+use super::file;
 
-#[derive(Clone, Copy)]
-pub enum Format { Html, Epub, Markdown }
+fn prepare_chapter_markdown(
+    markdown: &str,
+    title_level: usize,
+    ref_prefix: &str
+) -> String {
+    use text::{
+        AdjustExt,
+        normalize::NormalizeExt,
+        references::MdRefsExt,
+    };
 
-impl Format {
-    fn file_extension(&self) -> &'static str {
-        use self::Format::*;
-        match self {
-            Html => "html",
-            Epub => "epub",
-            Markdown => "md",
-        }
-    }
+    markdown
+        .increase_title_level(title_level)
+        .remove_markdown_file_title()
+        .prefix_refs_with(ref_prefix)
+        .normalize_all()
 }
 
-impl Display for Format {
-    fn fmt(&self, mut fmt: &mut Formatter) -> Result<(), fmt::Error> {
-        use self::Format::*;
-        write!(&mut fmt, "{}", match self {
-            Html => "HTML",
-            Epub => "ePub",
-            Markdown => "Markdown",
-        })
-    }
-}
-
-fn file_to_string<P: AsRef<Path>>(path: P) -> Result<String, Error> {
-    let mut buffer = String::new();
-    let mut file = File::open(&path).context(
-        format!(
-            "Failed opening {}",
-            path.as_ref().to_string_lossy()
-        )
-    )?;
-    file.read_to_string(&mut buffer).context(
-        format!(
-            "Failed reading {}",
-            path.as_ref().to_string_lossy()
-        )
-    )?;
-    Ok(buffer)
-}
-
-pub fn aggregate<P>(
+pub fn aggregate<P: AsRef<Path>>(
     src_path: P,
     meta_path: P,
     release_date: &str
-) -> Result<String, Error>
-where
-    P: AsRef<Path>,
-{
+) -> Result<String, Error> {
     let src_path = |filename: &str| src_path.as_ref().join(filename);
     let mut book = String::new();
+    
+    let metadata = file::to_string(meta_path)?.replace("{release_date}", release_date) + "\n";
+    book.push_str(&metadata);
 
-    {
-        println!("Reading metadata...");
-        let metadata = file_to_string(meta_path)?
-            .replace("{release_date}", release_date);
-        
-        book.push_str(&metadata);
-        book.push('\n');
-    }
+    println!("  MD README.md");
+    let readme_md = file::to_string(src_path("README.md"))?;
+    let introduction = prepare_chapter_markdown(&readme_md, 1, "readme");
+    book.push_str("\n\n# Introduction\n\n");
+    book.push_str(&introduction);
 
-    println!("Aggregating markdown...");
-    {
-        println!("  MD README.md");
-        let readme_md = &file_to_string(&src_path("README.md"))?;
-        let introduction = markdown::convert(readme_md, 1, "readme");
-        book.push_str("\n\n# Introduction\n\n");
-        book.push_str(&introduction);
-    }
+    file::to_string(src_path("SUMMARY.md"))?
+        .parse::<TableOfContents>()?
+        .into_iter()
+        .map(|chapter| {
+            println!("  MD {}", chapter.filename);
 
-    let table_of_contents = file_to_string(&src_path("SUMMARY.md"))?
-        .parse::<TableOfContents>()?;
+            // Markdown chapter title
+            book.push_str("\n\n");
+            for _ in 0..=chapter.nest_level { book.push('#') }
+            book.push(' ');
+            book.push_str(&chapter.header);
+            book.push('\n');
 
-    for chapter in table_of_contents {
-        println!("  MD {}", chapter.filename);
+            let chapter_content = prepare_chapter_markdown(
+                &file::to_string(src_path(&chapter.filename))?,
+                3,
+                &chapter.filename
+            );
 
-        // Markdown chapter title
-        book.push_str("\n\n");
-        for _ in 0..chapter.nest_level { book.push('#') }
-        book.push(' ');
-        book.push_str(&chapter.header);
+            book.push_str("\n");
+            book.push_str(&chapter_content);
 
-        let chapter_content = markdown::convert(
-            &file_to_string(&src_path(&chapter.filename))?,
-            3,
-            &chapter.filename
-        );
+            Ok(())
+        })
+        .collect::<io::Result<()>>()?;
 
-        book.push_str("\n");
-        book.push_str(&chapter_content);
-    }
-
-    println!();
     Ok(book)
-}
-
-fn write_markdown(
-    markdown: &str,
-    prefix: &str,
-    release_date: &str
-) -> Result<(), Error> {
-    let filename = format!("dist/{}-{}.md", prefix, release_date);
-    let mut file = File::create(&filename)?;
-    file.write_all(markdown.as_bytes()).map_err(Into::into)
 }
 
 pub fn render_to(
     markdown: &str,
     prefix: &str,
-    format: Format,
+    format: file::Format,
     release_date: &str,
 ) -> Result<(), Error> {
-    use self::Format::*;
     match format {
-        Markdown => write_markdown(markdown, prefix, release_date),
-        _ => pandoc::create(
-            &markdown.as_ref(),
-            prefix.as_ref(),
-            format,
-            release_date.as_ref()
-        ),
+        file::Format::Markdown => file::from_string(
+            format!("dist/{}-{}.md", prefix, release_date),
+            markdown
+        ).map_err(Into::into),
+        
+        _ => pandoc::create(markdown, prefix, format, release_date),
     }
 }
 
