@@ -1,23 +1,8 @@
-#[macro_use] pub mod patterns;
-pub mod normalize;
-pub mod references;
-pub mod str_iter;
-
-use self::patterns::reg;
-
-pub trait MatchExt: AsRef<str> + Sized {
-    fn toggles_code_block(&self) -> bool {
-        self
-            .as_ref()
-            .starts_with(patterns::CODE_BLOCK_TOGGLE)
-    }
-}
-
-impl<S> MatchExt for S where S: AsRef<str> {}
+use super::patterns::{CODE_BLOCK_TOGGLE, reg};
 
 pub trait AdjustExt: AsRef<str> + Sized {
     fn line_break_at(self, max_len: usize, separator: &str) -> String {
-        // TODO specialize
+        // TODO use Cow<str>
         if self.as_ref().len() <= max_len { return self.as_ref().to_string() }
 
         let adjusted_len = max_len - separator.chars().count();
@@ -52,7 +37,7 @@ pub trait AdjustExt: AsRef<str> + Sized {
         let mut collector = String::with_capacity(self.as_ref().len());
 
         for line in self.as_ref().lines() {
-            if in_code_block && !line.toggles_code_block() {
+            if in_code_block && !line.starts_with(CODE_BLOCK_TOGGLE) {
                 collector.push_str(line);
             } else if let Some(headline) = HEADER_PATTERN.captures(line) {
                 // '#' is always 1 byte, so .len() is safe to use.
@@ -67,7 +52,7 @@ pub trait AdjustExt: AsRef<str> + Sized {
                 ))
             } else {
                 collector.push_str(line);
-                if line.toggles_code_block() {
+                if line.starts_with(CODE_BLOCK_TOGGLE) {
                     in_code_block = !in_code_block
                 }
             };
@@ -89,12 +74,6 @@ impl<S> AdjustExt for S where S: AsRef<str> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn code_block_toggle() {
-        assert!("```wharglbargl".toggles_code_block());
-        assert!(!"other thing".toggles_code_block());
-    }
 
     const LONG_LINE: &str = indoc!("
         markdown+grid_tables+pipe_tables+raw_html+implicit_figures\

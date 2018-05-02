@@ -1,14 +1,6 @@
-#[macro_use]
-pub mod reg {
-    macro_rules! lazy_static_regex {
-        ($name:ident, $source:expr) => {
-            lazy_static! {
-                static ref $name: ::regex::Regex = ::regex::Regex::new($source)
-                    .expect(&format!("Invalid regex: {}", $source));
-            }
-        };
-    }
+pub const CODE_BLOCK_TOGGLE: &str = "```";
 
+pub mod reg {
     pub mod code {
         pub const BLOCK_RUST:   &str = r"^```(.*)rust(.*)";
         pub const BLOCK_HIDDEN: &str = r"^(#\s.*|#$)";
@@ -43,8 +35,5 @@ pub mod reg {
     pub mod mdfile {
         pub const TITLE:  &str = r"^%\s(.+)\n";
         pub const HEADER: &str = r"(?x)^(?P<level>[\#]+)\s(?P<title>.+)$";
-        pub const TOC:    &str = r"(?x)(?P<indent>\s*?)\*\s\[(?P<title>.+?)\]\((?P<filename>.+?)\)";
     }
 }
-
-pub const CODE_BLOCK_TOGGLE: &str = "```";

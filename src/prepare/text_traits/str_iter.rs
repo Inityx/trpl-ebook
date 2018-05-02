@@ -1,4 +1,7 @@
-pub trait UnlineExt<S: AsRef<str>>: Iterator<Item = S> + Sized {
+pub trait UnlineExt<S>: Iterator<Item = S> + Sized
+where
+    S: AsRef<str>
+{
     fn unlines_hinted(self, size_hint: usize) -> String {
         self.fold(
             String::with_capacity(size_hint),

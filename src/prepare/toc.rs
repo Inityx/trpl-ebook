@@ -1,10 +1,12 @@
-use text::patterns::reg;
 use std::{
     ops::Div,
     path::Path,
     str::FromStr,
 };
-use failure::{self, Error, err_msg};
+use failure::Error;
+
+const TOC_PATTERN: &str =
+    r"(?x)(?P<indent>\s*?)\*\s\[(?P<title>.+?)\]\((?P<filename>.+?)\)";
 
 #[derive(Debug, PartialEq)]
 pub struct Chapter {
@@ -13,7 +15,7 @@ pub struct Chapter {
     pub nest_level: usize,
 }
 
-fn build_header(title: &str, filename: &str) -> Result<String, failure::Error> {
+fn build_header(title: &str, filename: &str) -> Result<String, Error> {
     let section_slug = Path::new(&filename)
         .file_stem()
         .ok_or_else(|| format_err!(
@@ -30,14 +32,14 @@ fn build_header(title: &str, filename: &str) -> Result<String, failure::Error> {
 }
 
 impl FromStr for Chapter {
-    type Err = failure::Error;
+    type Err = Error;
 
     fn from_str(source: &str) -> Result<Self, Self::Err> {
-        lazy_static_regex!(TOC, reg::mdfile::TOC);
+        lazy_static_regex!(TOC, TOC_PATTERN);
 
         let capture = TOC
             .captures(source)
-            .ok_or_else(|| err_msg("Failed extracting ToC chapter"))?;
+            .ok_or_else(|| format_err!("Failed extracting ToC chapter '{}'", source))?;
         
         let filename = capture
             .name("filename").unwrap().as_str()
@@ -60,7 +62,7 @@ impl FromStr for Chapter {
 pub struct TableOfContents(Vec<Chapter>);
 
 impl FromStr for TableOfContents {
-    type Err = failure::Error;
+    type Err = Error;
 
     fn from_str(source: &str) -> Result<Self, Self::Err> {
         source

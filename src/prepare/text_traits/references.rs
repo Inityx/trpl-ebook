@@ -1,23 +1,13 @@
-use regex::Captures;
-
 use std::borrow::Cow;
-
-use super::{
-    MatchExt,
-    patterns::reg,
-    str_iter::UnlineExt,
-};
+use regex::Captures;
+use super::patterns::{CODE_BLOCK_TOGGLE, reg};
 
 lazy_static_regex!(REF_LINK, reg::reference::LINK);
 lazy_static_regex!(FOOTNOTE, reg::reference::FOOTNOTE);
 
 fn replace_ref_link<'t>(line: &'t str, filename: &str) -> Cow<'t, str> {
     let reference_replacer = |capture: &Captures| {
-        let link_id = capture
-            .name("id")
-            .expect("No id in ref link")
-            .as_str();
-        
+        let link_id = capture.name("id").expect("No id in ref link").as_str();
         format!("][{}--{}]", filename, link_id)
     };
 
@@ -26,11 +16,7 @@ fn replace_ref_link<'t>(line: &'t str, filename: &str) -> Cow<'t, str> {
 
 fn replace_footnote<'t>(line: &'t str, filename: &str) -> Cow<'t, str> {
     let footnote_replacer = |capture: &Captures| {
-        let link_id = capture
-            .name("id")
-            .expect("No id in footnote")
-            .as_str();
-        
+        let link_id = capture.name("id").expect("No id in footnote").as_str();
         format!("[^{}--{}]", filename, link_id)
     };
 
@@ -42,8 +28,8 @@ fn replace_ref_url<'t>(line: &'t str, filename: &str) -> Cow<'t, str> {
 
     let url_replacer = |capture: &Captures| {
         let footnote = capture.name("footnote").map(|s| s.as_str()).unwrap_or("");
-        let id       = capture.name("id"  ).expect("No id in reference definition").as_str();
-        let link     = capture.name("link").expect("No link in reference definition").as_str();
+        let id       = capture.name("id"  ).expect("No id in ref def"  ).as_str();
+        let link     = capture.name("link").expect("No link in ref def").as_str();
 
         format!("[{}{}--{}]: {}", footnote, filename, id, link)
     };
@@ -56,7 +42,7 @@ fn replace_all<'t>(
     in_code_block: bool,
     prefix: &str
 ) -> Cow<'t, str> {
-    if in_code_block && !line.toggles_code_block() {
+    if in_code_block && !line.starts_with(CODE_BLOCK_TOGGLE) {
         return Cow::from(line);
     }
     
@@ -68,8 +54,9 @@ fn replace_all<'t>(
     }
 }
 
-pub trait MdRefsExt: AsRef<str> + Sized {
+pub trait MdRefsExt: AsRef<str> + Sized{
     fn prefix_refs_with(self, prefix: &str) -> String {
+        use super::str_iter::UnlineExt;
         self
             .as_ref()
             .lines()
@@ -77,7 +64,7 @@ pub trait MdRefsExt: AsRef<str> + Sized {
                 false,
                 |in_code_block, line| {
                     let new_line = replace_all(line, *in_code_block, prefix);
-                    if line.toggles_code_block() {
+                    if line.starts_with(CODE_BLOCK_TOGGLE) {
                         *in_code_block = !*in_code_block;
                     }
                     Some(new_line)
