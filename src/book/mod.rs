@@ -39,7 +39,7 @@ pub fn aggregate<P: AsRef<Path>>(
     let metadata = file::to_string(meta_path)?.replace("{release_date}", release_date) + "\n";
     book.push_str(&metadata);
 
-    println!("  MD README.md");
+    println!("  README.md");
     let readme_md = file::to_string(src_path("README.md"))?;
     let introduction = prepare_chapter_markdown(&readme_md, 1, "readme");
     book.push_str("\n\n# Introduction\n\n");
@@ -49,7 +49,7 @@ pub fn aggregate<P: AsRef<Path>>(
         .parse::<TableOfContents>()?
         .into_iter()
         .map(|chapter| {
-            println!("  MD {}", chapter.filename);
+            println!("  {}", chapter.filename);
 
             // Markdown chapter title
             book.push_str("\n\n");

@@ -1,7 +1,5 @@
-#![feature(entry_or_default)]
-#![recursion_limit = "1024"]
-
 extern crate regex;
+extern crate rayon;
 extern crate docopt;
 extern crate serde;
 #[macro_use] extern crate failure;
@@ -14,33 +12,43 @@ mod book;
 mod args;
 mod file;
 
-use std::io::{stdout, Write};
-use file::Format::*;
+use rayon::iter::{
+    ParallelIterator,
+    IntoParallelRefIterator
+};
 
 const RELEASE_DATE: &str = "2016-10-01";
 
 fn main() {
-    let options = args::get();
+    use file::Format::*;
+    let opt = args::get();
 
     println!("Aggregating markdown");
     let markdown = book::aggregate(
-        options.flag_source,
-        options.flag_meta,
+        &opt.flag_source,
+        &opt.flag_meta,
         RELEASE_DATE
     ).unwrap();
     println!("Done\n");
 
-    for format in &[Markdown, Epub, Html] {
-        print!("Rendering {}... ", format);
-        stdout().flush().unwrap();
+    
+    [Markdown, Epub, Html]
+        .par_iter() // Because Pandoc is slow and single threaded
+        .map(|format| {
+            println!("Rendering {}...", format);
 
-        book::render_to(
-            &markdown,
-            &options.flag_prefix,
-            *format,
-            RELEASE_DATE,
-        ).unwrap();
+            let result = book::render_to(
+                &markdown,
+                &opt.flag_prefix,
+                *format,
+                RELEASE_DATE,
+            );
 
-        println!("Done");
-    }
+            if let Err(e) = result {
+                // TODO backtrace?
+            } else {
+                println!("Finished {}", format);
+            }
+        })
+        .collect::<()>();
 }
